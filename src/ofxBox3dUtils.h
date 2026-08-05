@@ -3,7 +3,7 @@
 #include "ofMain.h"
 #include <box3d/box3d.h>   // assumes include path points to box3d/include
 
-namespace ofxBox3d {
+namespace ofxBox3dUtils {
 
 // Global scale: OF units per meter (default 1.0 → 1 OF unit = 1 meter)
 // Use larger values (e.g. 100) if you prefer working in centimetres / pixels-like units.
@@ -12,7 +12,11 @@ inline float& scale() {
     return s;
 }
 
-inline void setScale(float s) { scale() = s; }
+inline void setScale(float s) {
+    if (s > 0.f) {
+        scale() = s;
+    }
+}
 inline float getScale() { return scale(); }
 
 // -----------------------------------------------------------------------------
@@ -30,6 +34,14 @@ inline b3Vec3 toB3(const glm::vec3& v) {
 
 inline b3Vec3 toB3(float x, float y, float z) {
     return toB3({x, y, z});
+}
+
+inline glm::vec3 toOfDirection(const b3Vec3& v) {
+    return {v.x, v.y, v.z};
+}
+
+inline b3Vec3 toB3Direction(const glm::vec3& v) {
+    return {v.x, v.y, v.z};
 }
 
 // -----------------------------------------------------------------------------
@@ -78,4 +90,4 @@ inline glm::mat4 getBodyMatrix(b3BodyId bodyId) {
     return T * R;
 }
 
-} // namespace ofxBox3d
+} // namespace ofxBox3dUtils

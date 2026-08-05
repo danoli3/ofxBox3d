@@ -64,6 +64,7 @@ public:
     void applyForceToCenter(const glm::vec3& force);
     void applyTorque(const glm::vec3& torque);
     void applyLinearImpulse(const glm::vec3& impulse, const glm::vec3& point);
+    void applyLinearImpulseToCenter(const glm::vec3& impulse);
     void applyAngularImpulse(const glm::vec3& impulse);
 
     // -----------------------------------------------------------------
@@ -81,6 +82,16 @@ public:
     void setRestitution(float restitution);
 
     float getMass() const;
+    void setLinearDamping(float damping);
+    float getLinearDamping() const;
+    void setAngularDamping(float damping);
+    float getAngularDamping() const;
+    void setGravityScale(float scale);
+    float getGravityScale() const;
+    void setBullet(bool bullet);
+    bool isBullet() const;
+    void setEnabled(bool enabled);
+    bool isEnabled() const;
     void setAwake(bool awake);
     bool isAwake() const;
 
@@ -90,11 +101,18 @@ public:
     virtual void draw() const;
     void setColor(const ofColor& c) { color = c; }
     ofColor getColor() const { return color; }
+    void setFilled(bool filled) { bFilled = filled; }
+    bool isFilled() const { return bFilled; }
+
+    void enableContactEvents(bool enabled = true);
+    void enableHitEvents(bool enabled = true);
+    void enableSensorEvents(bool enabled = true);
 
 protected:
     b3BodyId bodyId = b3_nullBodyId;
     ofxBox3d* worldPtr = nullptr;           // non-owning
     ofColor color = ofColor::white;
+    bool bFilled = true;
 
     // Helper used by derived classes when creating shapes
     b3ShapeDef makeShapeDef(float density = 1.f,

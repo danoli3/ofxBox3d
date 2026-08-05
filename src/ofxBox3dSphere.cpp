@@ -16,7 +16,7 @@ bool ofxBox3dSphere::setup(ofxBox3d& world,
 
     b3Sphere sphere;
     sphere.center = {0.f, 0.f, 0.f};
-    sphere.radius = radius / ofxBox3d::getScale();   // convert to meters
+    sphere.radius = radius / ofxBox3dUtils::getScale();   // convert to meters
 
     b3ShapeDef shapeDef = makeShapeDef(density, friction, restitution);
     shapeId = b3CreateSphereShape(bodyId, &shapeDef, &sphere);
@@ -37,7 +37,7 @@ void ofxBox3dSphere::draw() const {
     ofMultMatrix(getGlobalTransformMatrix());
     ofPushStyle();
     ofSetColor(color);
-    ofNoFill();
+    if (bFilled) ofFill(); else ofNoFill();
     ofDrawSphere(radius);
     ofPopStyle();
     ofPopMatrix();

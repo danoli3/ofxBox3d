@@ -2,17 +2,17 @@
 
 openFrameworks wrapper for [Box3D](https://github.com/erincatto/box3d) — Erin Catto's open-source 3D rigid-body physics engine (the 3D successor to Box2D).
 
-**Status:** Work in progress / alpha (matching Box3D 0.1.x)
+**Status:** Alpha, matching the vendored Box3D revision
 
-## Features (planned / current)
+## Features
 
 - Thin, modern C++ wrapper around the C17 Box3D API
 - `ofxBox3d` world manager with fixed-timestep stepping
-- Body helpers: Box, Sphere, Capsule (+ base class for custom shapes)
+- Body helpers for boxes, spheres and capsules
 - Easy conversion between `glm::vec3` / `ofQuaternion` and Box3D types
 - Optional scale factor (OF units ↔ meters)
 - Debug drawing
-- Contact / sensor event hooks (via ofEvents)
+- Contact, hit and sensor event hooks through `ofEvent`
 - ofNode-friendly transforms for easy rendering
 
 ## Requirements
@@ -50,23 +50,24 @@ See `docs/integration.md` for details.
 ## Quick Start
 
 ```cpp
-#include "ofxBox3d.h"
+#include "ofxBox3dAll.h"
 
 ofxBox3d physics;
 
 void ofApp::setup() {
     physics.setup();                       // default gravity (0, -10, 0)
     // physics.setGravity({0, -9.81f, 0});
-    // physics.setScale(100.f);            // 100 OF units = 1 meter (optional)
+    // ofxBox3dUtils::setScale(100.f);     // 100 OF units = 1 meter (optional)
 
     auto ground = make_shared<ofxBox3dBox>();
     ground->setup(physics, {0, -1, 0}, {20, 1, 20});  // pos, half-extents
-    ground->setStatic();
+    physics.addBody(ground);
 
     auto box = make_shared<ofxBox3dBox>();
     box->setup(physics, {0, 5, 0}, {0.5f, 0.5f, 0.5f});
     box->setDensity(1.f);
     box->setFriction(0.3f);
+    physics.addBody(box);
 }
 
 void ofApp::update() {

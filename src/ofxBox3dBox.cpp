@@ -27,7 +27,7 @@ bool ofxBox3dBox::setup(ofxBox3d& world,
     this->halfExtents = halfExtents;
 
     // Convert half-extents to Box3D (meters)
-    b3Vec3 he = ofxBox3d::toB3(halfExtents);
+    b3Vec3 he = ofxBox3dUtils::toB3(halfExtents);
     b3BoxHull boxHull = b3MakeBoxHull(he.x, he.y, he.z);
 
     b3ShapeDef shapeDef = makeShapeDef(density, friction, restitution);
@@ -49,8 +49,7 @@ void ofxBox3dBox::draw() const {
     ofMultMatrix(getGlobalTransformMatrix());
     ofPushStyle();
     ofSetColor(color);
-    ofNoFill();
-    // ofDrawBox takes full size (not half)
+    if (bFilled) ofFill(); else ofNoFill();
     ofDrawBox(halfExtents.x * 2.f, halfExtents.y * 2.f, halfExtents.z * 2.f);
     ofPopStyle();
     ofPopMatrix();

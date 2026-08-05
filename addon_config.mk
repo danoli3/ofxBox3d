@@ -12,11 +12,10 @@ common:
 	ADDON_INCLUDES = libs/box3d/include
 	ADDON_INCLUDES += src
 
-	# If you compile Box3D sources directly (instead of linking a prebuilt lib):
-	# List them here. You will need to adjust for your platform / SIMD.
-	# Example (incomplete – fill from box3d/src after submodule):
-	# ADDON_SOURCES = libs/box3d/src/*.c
-	# Or better: use CMake / FetchContent in modern OF projects.
+	ADDON_SOURCES_EXCLUDE = libs/box3d/benchmark/%
+	ADDON_SOURCES_EXCLUDE += libs/box3d/samples/%
+	ADDON_SOURCES_EXCLUDE += libs/box3d/shared/%
+	ADDON_SOURCES_EXCLUDE += libs/box3d/test/%
 
 linux64:
 	# ADDON_LIBS = ... if linking a static lib

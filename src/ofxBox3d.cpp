@@ -23,7 +23,7 @@ void ofxBox3d::clear() {
 
 void ofxBox3d::createWorld(const glm::vec3& gravity) {
     b3WorldDef def = b3DefaultWorldDef();
-    def.gravity = ofxBox3d::toB3(gravity);
+    def.gravity = ofxBox3dUtils::toB3(gravity);
     // Optional: def.enableSleep = true; etc.
     worldId = b3CreateWorld(&def);
     ofLogNotice("ofxBox3d") << "world created (id index=" << worldId.index1 << ")";
@@ -49,6 +49,7 @@ void ofxBox3d::update(float frameDt) {
 
     while (accumulator >= step) {
         b3World_Step(worldId, step, subStepCount);
+        notifyEvents();
         accumulator -= step;
     }
 
@@ -58,14 +59,35 @@ void ofxBox3d::update(float frameDt) {
     }
 }
 
+void ofxBox3d::notifyEvents() {
+    b3ContactEvents contacts = b3World_GetContactEvents(worldId);
+    for (int i = 0; i < contacts.beginCount; ++i) {
+        ofNotifyEvent(contactBeginEvent, contacts.beginEvents[i], this);
+    }
+    for (int i = 0; i < contacts.endCount; ++i) {
+        ofNotifyEvent(contactEndEvent, contacts.endEvents[i], this);
+    }
+    for (int i = 0; i < contacts.hitCount; ++i) {
+        ofNotifyEvent(contactHitEvent, contacts.hitEvents[i], this);
+    }
+
+    b3SensorEvents sensors = b3World_GetSensorEvents(worldId);
+    for (int i = 0; i < sensors.beginCount; ++i) {
+        ofNotifyEvent(sensorBeginEvent, sensors.beginEvents[i], this);
+    }
+    for (int i = 0; i < sensors.endCount; ++i) {
+        ofNotifyEvent(sensorEndEvent, sensors.endEvents[i], this);
+    }
+}
+
 void ofxBox3d::setGravity(const glm::vec3& g) {
     if (!isSetup()) return;
-    b3World_SetGravity(worldId, ofxBox3d::toB3(g));
+    b3World_SetGravity(worldId, ofxBox3dUtils::toB3(g));
 }
 
 glm::vec3 ofxBox3d::getGravity() const {
     if (!isSetup()) return {0,0,0};
-    return ofxBox3d::toOf(b3World_GetGravity(worldId));
+    return ofxBox3dUtils::toOf(b3World_GetGravity(worldId));
 }
 
 void ofxBox3d::addBody(std::shared_ptr<ofxBox3dBody> body) {

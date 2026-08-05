@@ -2,8 +2,9 @@
 
 #include "ofMain.h"
 #include "ofxBox3dUtils.h"
-#include <vector>
+#include <algorithm>
 #include <memory>
+#include <vector>
 
 // Forward
 class ofxBox3dBody;
@@ -41,7 +42,7 @@ public:
     /// Internally accumulates time and steps at hz with subStepCount sub-steps.
     void update(float frameDt = -1.f);  // -1 → use ofGetLastFrameTime()
 
-    void setFixedHz(float hz) { fixedHz = hz; }
+    void setFixedHz(float hz) { fixedHz = std::max(hz, 1.f); }
     float getFixedHz() const { return fixedHz; }
 
     void setSubStepCount(int count) { subStepCount = std::max(1, count); }
@@ -71,11 +72,11 @@ public:
     void setDrawBodies(bool b) { bDrawBodies = b; }
     bool getDrawBodies() const { return bDrawBodies; }
 
-    // -----------------------------------------------------------------
-    // Events (contact start / end) – stub for now
-    // -----------------------------------------------------------------
-    ofEvent<void> contactStartEvent;   // TODO: richer args
-    ofEvent<void> contactEndEvent;
+    ofEvent<b3ContactBeginTouchEvent> contactBeginEvent;
+    ofEvent<b3ContactEndTouchEvent> contactEndEvent;
+    ofEvent<b3ContactHitEvent> contactHitEvent;
+    ofEvent<b3SensorBeginTouchEvent> sensorBeginEvent;
+    ofEvent<b3SensorEndTouchEvent> sensorEndEvent;
 
 protected:
     b3WorldId worldId = b3_nullWorldId;
@@ -89,4 +90,5 @@ protected:
 
     void createWorld(const glm::vec3& gravity);
     void destroyWorld();
+    void notifyEvents();
 };

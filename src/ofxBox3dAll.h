@@ -6,3 +6,4 @@
 #include "ofxBox3dBody.h"
 #include "ofxBox3dBox.h"
 #include "ofxBox3dSphere.h"
+#include "ofxBox3dCapsule.h"
