@@ -83,6 +83,12 @@ void ofApp::draw() {
 }
 ```
 
+## Examples
+
+- `basicExample` demonstrates boxes, spheres, capsules and fixed-step simulation.
+- `contactEventsExample` demonstrates typed contact events.
+- `physicsConceptsExample` provides seven switchable core-physics scenes with an optional `ofxImGui` interface. It requires `ofxImGui` beside this addon, but `ofxBox3d` itself has no ImGui dependency.
+
 ## License
 
 MIT (same as Box3D and typical OF addons)
