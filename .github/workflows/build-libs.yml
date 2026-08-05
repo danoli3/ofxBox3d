@@ -1,0 +1,81 @@
+name: Build and release Box3D binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      apothecary_ref:
+        description: openframeworks/apothecary git ref
+        default: bleeding
+      upload_release:
+        description: Create/update the binary release
+        type: boolean
+        default: false
+      libs_tag:
+        description: Binary release tag
+        default: libs-v0.1.0
+  push:
+    tags: ['libs-v*']
+
+env:
+  APOTHECARY_REF: ${{ inputs.apothecary_ref || 'bleeding' }}
+  BOX3D_VERSION: '0.1.0'
+
+jobs:
+  build:
+    name: ${{ matrix.package_id }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package_id: osx
+            os: macos-14
+          - package_id: linux64
+            os: ubuntu-22.04
+          - package_id: vs-x64
+            os: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          repository: openframeworks/apothecary
+          ref: ${{ env.APOTHECARY_REF }}
+          path: apothecary
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: Build and package
+        shell: bash
+        env:
+          APOTHECARY_DIR: ${{ github.workspace }}/apothecary
+        run: |
+          ./scripts/build_libs.sh "${{ matrix.package_id }}"
+          ./scripts/package_libs.sh "${{ matrix.package_id }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: box3d-${{ matrix.package_id }}
+          path: scripts/dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: Publish binary release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/libs-v') || inputs.upload_release == true
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Publish assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.libs_tag }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "Box3D binaries $TAG" --notes "Prebuilt static Box3D libraries for ofxBox3d."
+          gh release upload "$TAG" artifacts/*.tar.gz --repo "$GITHUB_REPOSITORY" --clobber
+

@@ -67,6 +67,9 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+scripts/dist/*.tar.gz
+!scripts/dist/.gitkeep
+libs/box3d-prebuilt/
 examples/basicExample/basicExample.xcodeproj
 examples/basicExample/com.apple.DeveloperTools
 examples/contactEventsExample/contactEventsExample.xcodeproj

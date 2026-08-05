@@ -1,0 +1,58 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  box3d-tests:
+    name: Box3D tests (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-14
+          - name: Linux
+            os: ubuntu-22.04
+          - name: Windows
+            os: windows-2022
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: >-
+          cmake -S libs/box3d -B build/box3d
+          -DBUILD_SHARED_LIBS=OFF
+          -DBOX3D_UNIT_TESTS=ON
+          -DBOX3D_SAMPLES=OFF
+          -DBOX3D_BENCHMARKS=OFF
+          -DBOX3D_DOCS=OFF
+
+      - name: Build tests
+        run: cmake --build build/box3d --config Release --parallel
+
+      - name: Run tests
+        shell: bash
+        run: |
+          test_bin="$(find build/box3d -type f \( -name test -o -name test.exe \) | head -1)"
+          test -n "$test_bin"
+          "$test_bin"
+
+  scripts:
+    name: Packaging scripts
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: bash -n scripts/*.sh scripts/apothecary/formula/box3d.sh
+      - run: ./scripts/platforms.sh
