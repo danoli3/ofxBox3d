@@ -10,6 +10,11 @@
 class ofxBox3dBox : public ofxBox3dBody {
 public:
     ofxBox3dBox() = default;
+    ofxBox3dBox(ofxBox3dBox&& other);
+    ofxBox3dBox& operator=(ofxBox3dBox&& other);
+
+    bool setup(ofxBox3d& world, const glm::vec3& position, const glm::vec3& halfExtents,
+               const ofxBox3dBodySettings& settings);
 
     /// Create a dynamic or static box
     bool setup(ofxBox3d& world,

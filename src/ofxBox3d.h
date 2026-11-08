@@ -2,12 +2,16 @@
 
 #include "ofMain.h"
 #include "ofxBox3dUtils.h"
+#include "ofxBox3dBodySettings.h"
 #include <algorithm>
 #include <memory>
 #include <vector>
 
 // Forward
 class ofxBox3dBody;
+class ofxBox3dBox;
+class ofxBox3dSphere;
+class ofxBox3dCapsule;
 
 /**
  * ofxBox3d – central physics world for openFrameworks + Box3D
@@ -32,8 +36,21 @@ public:
     // Lifecycle
     // -----------------------------------------------------------------
     void setup(const glm::vec3& gravity = {0.f, -10.f, 0.f});
+    void setupWithDefinition(const b3WorldDef& definition);
     void clear();                       // destroy world + all tracked bodies
-    bool isSetup() const { return B3_IS_NON_NULL(worldId); }
+    bool isSetup() const { return B3_IS_NON_NULL(worldId) && b3World_IsValid(worldId); }
+
+    /// Value-owned bodies: draw/sync them yourself; they are not in getBodies().
+    ofxBox3dBox createBox(const glm::vec3& position, const glm::vec3& halfExtents,
+                         const ofxBox3dBodySettings& settings = {});
+    ofxBox3dBox createStaticBox(const glm::vec3& position, const glm::vec3& halfExtents,
+                               float friction = 0.3f);
+    ofxBox3dSphere createSphere(const glm::vec3& position, float radius,
+                               const ofxBox3dBodySettings& settings = {});
+    ofxBox3dCapsule createCapsule(const glm::vec3& position, float radius, float height,
+                                 const ofxBox3dBodySettings& settings = {});
+    int getBodyCount() const;
+    int getAwakeBodyCount() const;
 
     // -----------------------------------------------------------------
     // Simulation

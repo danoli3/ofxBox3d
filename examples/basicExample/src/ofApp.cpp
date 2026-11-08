@@ -46,14 +46,15 @@ void ofApp::draw() {
     ofBackground(22);
     ofEnableDepthTest();
     camera.begin();
-    ofDrawGrid(100.f, 16, true);
     physics.draw();
+    grid.draw(100.f, 16);
     camera.end();
     ofDisableDepthTest();
-    ofDrawBitmapStringHighlight("space: spawn   r: reset", 20, 24);
+    ofDrawBitmapStringHighlight("space: spawn   r: reset   g: grid   h: half/full opacity", 20, 24);
 }
 
 void ofApp::keyPressed(int key) {
+    grid.keyPressed(key);
     if (key == ' ') spawn();
     if (key == 'r') {
         actors.clear();

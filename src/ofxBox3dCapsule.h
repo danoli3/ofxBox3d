@@ -4,6 +4,12 @@
 
 class ofxBox3dCapsule : public ofxBox3dBody {
 public:
+    ofxBox3dCapsule() = default;
+    ofxBox3dCapsule(ofxBox3dCapsule&& other);
+    ofxBox3dCapsule& operator=(ofxBox3dCapsule&& other);
+
+    bool setup(ofxBox3d& world, const glm::vec3& position, float radius, float height,
+               const ofxBox3dBodySettings& settings);
     bool setup(ofxBox3d& world,
                const glm::vec3& position,
                float radius,

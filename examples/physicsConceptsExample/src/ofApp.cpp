@@ -140,8 +140,7 @@ void ofApp::draw() {
         ofSetLineWidth(3.f);
         ofDrawLine({0.f, 650.f, 0.f}, controlledBody->getPosition());
     }
-    ofSetColor(90);
-    ofDrawGrid(100.f, 14, true);
+    grid.draw(100.f, 14);
     camera.end();
     ofDisableDepthTest();
 
@@ -161,6 +160,8 @@ void ofApp::draw() {
     if (ImGui::Button("Step")) stepOnce = true;
     ImGui::Text("Bodies: %d", static_cast<int>(bodies.size()));
     ImGui::Text("Awake: %d", b3World_GetAwakeBodyCount(physics.getWorldId()));
+    ImGui::Checkbox("Grid", &grid.visible);
+    ImGui::SliderFloat("Grid opacity", &grid.opacity, 0.f, 1.f, "%.2f");
     if (sceneIndex == 4 && controlledBody) {
         ImGui::SeparatorText("Apply to yellow box");
         if (ImGui::Button("Force up")) controlledBody->applyForceToCenter({0.f, 8000.f, 0.f});
@@ -171,11 +172,13 @@ void ofApp::draw() {
     }
     ImGui::Separator();
     ImGui::TextDisabled("1-7 scenes  R reset  P pause  N step");
+    ImGui::TextDisabled("G grid  H half/full grid opacity");
     ImGui::End();
     gui.end();
 }
 
 void ofApp::keyPressed(int key) {
+    grid.keyPressed(key);
     if (key >= '1' && key <= '7') loadScene(key - '1');
     if (key == 'r' || key == 'R') loadScene(sceneIndex);
     if (key == 'p' || key == 'P') paused = !paused;

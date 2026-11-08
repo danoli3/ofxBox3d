@@ -3,6 +3,7 @@
 #include "ofMain.h"
 #include "ofxBox3dAll.h"
 #include "ofxImGui.h"
+#include "../../shared/ExampleGrid.h"
 
 class ofApp : public ofBaseApp {
 public:
@@ -21,6 +22,7 @@ public:
                                              b3BodyType type = b3_dynamicBody);
 
     ofEasyCam camera;
+    ExampleGrid grid;
     ofLight light;
     ofxImGui::Gui gui;
     ofxBox3d physics;

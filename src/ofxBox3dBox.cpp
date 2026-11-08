@@ -1,4 +1,18 @@
 #include "ofxBox3dBox.h"
+#include <utility>
+
+ofxBox3dBox::ofxBox3dBox(ofxBox3dBox&& other)
+    : ofxBox3dBody(std::move(other)), halfExtents(other.halfExtents),
+      shapeId(std::exchange(other.shapeId, b3_nullShapeId)) {}
+
+ofxBox3dBox& ofxBox3dBox::operator=(ofxBox3dBox&& other) {
+    if (this != &other) {
+        ofxBox3dBody::operator=(std::move(other));
+        halfExtents = other.halfExtents;
+        shapeId = std::exchange(other.shapeId, b3_nullShapeId);
+    }
+    return *this;
+}
 
 bool ofxBox3dBox::setup(ofxBox3d& world,
                         const glm::vec3& position,
@@ -20,7 +34,18 @@ bool ofxBox3dBox::setup(ofxBox3d& world,
                         float friction,
                         float restitution)
 {
-    if (!ofxBox3dBody::setup(world, position, rotation, type)) {
+    ofxBox3dBodySettings settings;
+    settings.type = type;
+    settings.rotation = rotation;
+    settings.density = density;
+    settings.friction = friction;
+    settings.restitution = restitution;
+    return setup(world, position, halfExtents, settings);
+}
+
+bool ofxBox3dBox::setup(ofxBox3d& world, const glm::vec3& position,
+                        const glm::vec3& halfExtents, const ofxBox3dBodySettings& settings) {
+    if (!ofxBox3dBody::setup(world, position, settings)) {
         return false;
     }
 
@@ -30,7 +55,7 @@ bool ofxBox3dBox::setup(ofxBox3d& world,
     b3Vec3 he = ofxBox3dUtils::toB3(halfExtents);
     b3BoxHull boxHull = b3MakeBoxHull(he.x, he.y, he.z);
 
-    b3ShapeDef shapeDef = makeShapeDef(density, friction, restitution);
+    b3ShapeDef shapeDef = makeShapeDef(settings);
     shapeId = b3CreateHullShape(bodyId, &shapeDef, &boxHull.base);
 
     if (B3_IS_NULL(shapeId)) {
@@ -46,7 +71,7 @@ void ofxBox3dBox::draw() const {
     if (!isValid()) return;
 
     ofPushMatrix();
-    ofMultMatrix(getGlobalTransformMatrix());
+    ofMultMatrix(getRenderTransformMatrix());
     ofPushStyle();
     ofSetColor(color);
     if (bFilled) ofFill(); else ofNoFill();

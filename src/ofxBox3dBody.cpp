@@ -1,4 +1,32 @@
 #include "ofxBox3dBody.h"
+#include <utility>
+
+ofxBox3dBody::ofxBox3dBody(ofxBox3dBody&& other) {
+    moveFrom(other);
+}
+
+ofxBox3dBody& ofxBox3dBody::operator=(ofxBox3dBody&& other) {
+    if (this != &other) {
+        destroy();
+        moveFrom(other);
+    }
+    return *this;
+}
+
+void ofxBox3dBody::moveFrom(ofxBox3dBody& other) {
+    // ofNode's move does not retarget children's parent pointers. Transfer the
+    // transform and parent explicitly, leaving child nodes with their original node.
+    clearParent();
+    ofNode::setPosition(other.ofNode::getPosition());
+    ofNode::setOrientation(other.ofNode::getOrientationQuat());
+    ofNode::setScale(other.ofNode::getScale());
+    if (other.getParent() && other.getParent() != this) setParent(*other.getParent());
+    other.clearParent();
+    color = other.color;
+    bFilled = other.bFilled;
+    bodyId = std::exchange(other.bodyId, b3_nullBodyId);
+    ownerWorldId = std::exchange(other.ownerWorldId, b3_nullWorldId);
+}
 
 ofxBox3dBody::~ofxBox3dBody() {
     destroy();
@@ -13,20 +41,33 @@ bool ofxBox3dBody::setup(ofxBox3d& world,
                          const ofQuaternion& rotation,
                          b3BodyType type)
 {
+    ofxBox3dBodySettings settings;
+    settings.type = type;
+    settings.rotation = rotation;
+    return setup(world, position, settings);
+}
+
+bool ofxBox3dBody::setup(ofxBox3d& world, const glm::vec3& position,
+                        const ofxBox3dBodySettings& settings) {
     if (!world.isSetup()) {
         ofLogError("ofxBox3dBody") << "world not set up";
         return false;
     }
     destroy(); // safety
 
-    worldPtr = &world;
-
     b3BodyDef def = b3DefaultBodyDef();
-    def.type = type;
-    def.position = ofxBox3dUtils::toB3(position);
-    def.rotation = ofxBox3dUtils::toB3(rotation);
+    def.type = settings.type;
+    def.position = ofxBox3dUtils::toB3Position(position);
+    def.rotation = ofxBox3dUtils::toB3(settings.rotation);
+    def.linearDamping = settings.linearDamping;
+    def.angularDamping = settings.angularDamping;
+    def.gravityScale = settings.gravityScale;
+    def.enableSleep = settings.enableSleep;
+    def.isBullet = settings.isBullet;
+    def.userData = settings.userData;
 
-    bodyId = b3CreateBody(world.getWorldId(), &def);
+    ownerWorldId = world.getWorldId();
+    bodyId = b3CreateBody(ownerWorldId, &def);
     if (B3_IS_NULL(bodyId)) {
         ofLogError("ofxBox3dBody") << "b3CreateBody failed";
         return false;
@@ -34,38 +75,43 @@ bool ofxBox3dBody::setup(ofxBox3d& world,
 
     // initialise ofNode
     ofNode::setPosition(position);
-    ofNode::setOrientation(rotation);
+    ofNode::setOrientation(settings.rotation);
 
     return true;
 }
 
 void ofxBox3dBody::destroy() {
-    if (B3_IS_NON_NULL(bodyId) && worldPtr && worldPtr->isSetup()) {
+    if (isValid()) {
         // Box3D destroys shapes when the body is destroyed
         b3DestroyBody(bodyId);
     }
     bodyId = b3_nullBodyId;
-    worldPtr = nullptr;
+    ownerWorldId = b3_nullWorldId;
 }
 
 void ofxBox3dBody::syncFromPhysics() {
     if (!isValid()) return;
-    b3Vec3 p = b3Body_GetPosition(bodyId);
+    b3Pos p = b3Body_GetPosition(bodyId);
     b3Quat q = b3Body_GetRotation(bodyId);
-    ofNode::setPosition(ofxBox3dUtils::toOf(p));
+    ofNode::setPosition(ofxBox3dUtils::toOfPosition(p));
     ofNode::setOrientation(ofxBox3dUtils::toOf(q));
 }
 
 void ofxBox3dBody::syncToPhysics() {
     if (!isValid()) return;
     b3Body_SetTransform(bodyId,
-                        ofxBox3dUtils::toB3(ofNode::getPosition()),
+                        ofxBox3dUtils::toB3Position(ofNode::getPosition()),
                         ofxBox3dUtils::toB3(ofNode::getOrientationQuat()));
 }
 
 glm::vec3 ofxBox3dBody::getPosition() const {
     if (!isValid()) return ofNode::getPosition();
-    return ofxBox3dUtils::toOf(b3Body_GetPosition(bodyId));
+    return ofxBox3dUtils::toOfPosition(b3Body_GetPosition(bodyId));
+}
+
+glm::dvec3 ofxBox3dBody::getPositionDouble() const {
+    if (!isValid()) return glm::dvec3(ofNode::getPosition());
+    return ofxBox3dUtils::toOfPositionDouble(b3Body_GetPosition(bodyId));
 }
 
 ofQuaternion ofxBox3dBody::getOrientationQuat() const {
@@ -76,7 +122,14 @@ ofQuaternion ofxBox3dBody::getOrientationQuat() const {
 void ofxBox3dBody::setPosition(const glm::vec3& p) {
     ofNode::setPosition(p);
     if (isValid()) {
-        b3Body_SetTransform(bodyId, ofxBox3dUtils::toB3(p), b3Body_GetRotation(bodyId));
+        b3Body_SetTransform(bodyId, ofxBox3dUtils::toB3Position(p), b3Body_GetRotation(bodyId));
+    }
+}
+
+void ofxBox3dBody::setPositionDouble(const glm::dvec3& p) {
+    ofNode::setPosition(glm::vec3(p));
+    if (isValid()) {
+        b3Body_SetTransform(bodyId, ofxBox3dUtils::toB3Position(p), b3Body_GetRotation(bodyId));
     }
 }
 
@@ -91,7 +144,7 @@ void ofxBox3dBody::setTransform(const glm::vec3& p, const ofQuaternion& q) {
     ofNode::setPosition(p);
     ofNode::setOrientation(q);
     if (isValid()) {
-        b3Body_SetTransform(bodyId, ofxBox3dUtils::toB3(p), ofxBox3dUtils::toB3(q));
+        b3Body_SetTransform(bodyId, ofxBox3dUtils::toB3Position(p), ofxBox3dUtils::toB3(q));
     }
 }
 
@@ -114,7 +167,7 @@ glm::vec3 ofxBox3dBody::getAngularVelocity() const {
 }
 
 void ofxBox3dBody::applyForce(const glm::vec3& force, const glm::vec3& point) {
-    if (isValid()) b3Body_ApplyForce(bodyId, ofxBox3dUtils::toB3(force), ofxBox3dUtils::toB3(point), true);
+    if (isValid()) b3Body_ApplyForce(bodyId, ofxBox3dUtils::toB3(force), ofxBox3dUtils::toB3Position(point), true);
 }
 
 void ofxBox3dBody::applyForceToCenter(const glm::vec3& force) {
@@ -126,7 +179,7 @@ void ofxBox3dBody::applyTorque(const glm::vec3& torque) {
 }
 
 void ofxBox3dBody::applyLinearImpulse(const glm::vec3& impulse, const glm::vec3& point) {
-    if (isValid()) b3Body_ApplyLinearImpulse(bodyId, ofxBox3dUtils::toB3(impulse), ofxBox3dUtils::toB3(point), true);
+    if (isValid()) b3Body_ApplyLinearImpulse(bodyId, ofxBox3dUtils::toB3(impulse), ofxBox3dUtils::toB3Position(point), true);
 }
 
 void ofxBox3dBody::applyLinearImpulseToCenter(const glm::vec3& impulse) {
@@ -236,4 +289,20 @@ b3ShapeDef ofxBox3dBody::makeShapeDef(float density, float friction, float resti
     def.baseMaterial.friction = friction;
     def.baseMaterial.restitution = restitution;
     return def;
+}
+
+b3ShapeDef ofxBox3dBody::makeShapeDef(const ofxBox3dBodySettings& settings) const {
+    b3ShapeDef def = makeShapeDef(settings.density, settings.friction, settings.restitution);
+    def.isSensor = settings.isSensor;
+    def.enableContactEvents = settings.enableContactEvents;
+    def.enableHitEvents = settings.enableHitEvents;
+    def.enableSensorEvents = settings.enableSensorEvents;
+    return def;
+}
+
+glm::mat4 ofxBox3dBody::getRenderTransformMatrix() const {
+    // Value-owned bodies need not be registered in the world's sync list.
+    glm::mat4 transform = glm::scale(ofxBox3dUtils::getBodyMatrix(bodyId), ofNode::getScale());
+    if (getParent()) transform = getParent()->getGlobalTransformMatrix() * transform;
+    return transform;
 }

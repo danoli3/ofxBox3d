@@ -44,6 +44,28 @@ inline b3Vec3 toB3Direction(const glm::vec3& v) {
     return {v.x, v.y, v.z};
 }
 
+// World positions use b3Pos, which differs from b3Vec3 in double-precision builds.
+inline b3Pos toB3Position(const glm::vec3& p) {
+    const double s = getScale();
+    using Scalar = decltype(b3Pos{}.x);
+    return {static_cast<Scalar>(p.x / s), static_cast<Scalar>(p.y / s), static_cast<Scalar>(p.z / s)};
+}
+
+inline b3Pos toB3Position(const glm::dvec3& p) {
+    const double s = getScale();
+    using Scalar = decltype(b3Pos{}.x);
+    return {static_cast<Scalar>(p.x / s), static_cast<Scalar>(p.y / s), static_cast<Scalar>(p.z / s)};
+}
+
+inline glm::dvec3 toOfPositionDouble(const b3Pos& p) {
+    const double s = getScale();
+    return {p.x * s, p.y * s, p.z * s};
+}
+
+inline glm::vec3 toOfPosition(const b3Pos& p) {
+    return glm::vec3(toOfPositionDouble(p));
+}
+
 // -----------------------------------------------------------------------------
 // Quaternion conversion  (Box3D: vector part + scalar; OF/glm: x,y,z,w)
 // -----------------------------------------------------------------------------
@@ -74,18 +96,18 @@ inline b3Quat toB3(const glm::quat& q) {
 // Transform helpers
 // -----------------------------------------------------------------------------
 inline void applyBodyTransform(ofNode& node, b3BodyId bodyId) {
-    if (B3_IS_NULL(bodyId)) return;
-    b3Vec3 pos = b3Body_GetPosition(bodyId);
+    if (B3_IS_NULL(bodyId) || !b3Body_IsValid(bodyId)) return;
+    b3Pos pos = b3Body_GetPosition(bodyId);
     b3Quat rot = b3Body_GetRotation(bodyId);
-    node.setPosition(toOf(pos));
+    node.setPosition(toOfPosition(pos));
     node.setOrientation(toOf(rot));
 }
 
 inline glm::mat4 getBodyMatrix(b3BodyId bodyId) {
-    if (B3_IS_NULL(bodyId)) return glm::mat4(1.f);
-    b3Vec3 p = b3Body_GetPosition(bodyId);
+    if (B3_IS_NULL(bodyId) || !b3Body_IsValid(bodyId)) return glm::mat4(1.f);
+    b3Pos p = b3Body_GetPosition(bodyId);
     b3Quat q = b3Body_GetRotation(bodyId);
-    glm::mat4 T = glm::translate(glm::mat4(1.f), toOf(p));
+    glm::mat4 T = glm::translate(glm::mat4(1.f), toOfPosition(p));
     glm::mat4 R = glm::mat4_cast(toGlm(q));
     return T * R;
 }

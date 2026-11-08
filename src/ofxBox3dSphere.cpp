@@ -1,4 +1,18 @@
 #include "ofxBox3dSphere.h"
+#include <utility>
+
+ofxBox3dSphere::ofxBox3dSphere(ofxBox3dSphere&& other)
+    : ofxBox3dBody(std::move(other)), radius(other.radius),
+      shapeId(std::exchange(other.shapeId, b3_nullShapeId)) {}
+
+ofxBox3dSphere& ofxBox3dSphere::operator=(ofxBox3dSphere&& other) {
+    if (this != &other) {
+        ofxBox3dBody::operator=(std::move(other));
+        radius = other.radius;
+        shapeId = std::exchange(other.shapeId, b3_nullShapeId);
+    }
+    return *this;
+}
 
 bool ofxBox3dSphere::setup(ofxBox3d& world,
                            const glm::vec3& position,
@@ -8,7 +22,17 @@ bool ofxBox3dSphere::setup(ofxBox3d& world,
                            float friction,
                            float restitution)
 {
-    if (!ofxBox3dBody::setup(world, position, ofQuaternion(), type)) {
+    ofxBox3dBodySettings settings;
+    settings.type = type;
+    settings.density = density;
+    settings.friction = friction;
+    settings.restitution = restitution;
+    return setup(world, position, radius, settings);
+}
+
+bool ofxBox3dSphere::setup(ofxBox3d& world, const glm::vec3& position, float radius,
+                           const ofxBox3dBodySettings& settings) {
+    if (!ofxBox3dBody::setup(world, position, settings)) {
         return false;
     }
 
@@ -18,7 +42,7 @@ bool ofxBox3dSphere::setup(ofxBox3d& world,
     sphere.center = {0.f, 0.f, 0.f};
     sphere.radius = radius / ofxBox3dUtils::getScale();   // convert to meters
 
-    b3ShapeDef shapeDef = makeShapeDef(density, friction, restitution);
+    b3ShapeDef shapeDef = makeShapeDef(settings);
     shapeId = b3CreateSphereShape(bodyId, &shapeDef, &sphere);
 
     if (B3_IS_NULL(shapeId)) {
@@ -34,7 +58,7 @@ void ofxBox3dSphere::draw() const {
     if (!isValid()) return;
 
     ofPushMatrix();
-    ofMultMatrix(getGlobalTransformMatrix());
+    ofMultMatrix(getRenderTransformMatrix());
     ofPushStyle();
     ofSetColor(color);
     if (bFilled) ofFill(); else ofNoFill();

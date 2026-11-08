@@ -19,6 +19,11 @@ public:
     ofxBox3dBody(const ofxBox3dBody&) = delete;
     ofxBox3dBody& operator=(const ofxBox3dBody&) = delete;
 
+    // Physics ownership, local transform, style, and parent link transfer.
+    // Children stay attached to the original node; keep tree nodes at stable addresses.
+    ofxBox3dBody(ofxBox3dBody&& other);
+    ofxBox3dBody& operator=(ofxBox3dBody&& other);
+
     // -----------------------------------------------------------------
     // Creation helpers (call after world is ready)
     // -----------------------------------------------------------------
@@ -33,11 +38,16 @@ public:
                const ofQuaternion& rotation,
                b3BodyType type = b3_dynamicBody);
 
+    bool setup(ofxBox3d& world, const glm::vec3& position,
+               const ofxBox3dBodySettings& settings);
+
     // -----------------------------------------------------------------
     // Lifetime
     // -----------------------------------------------------------------
     void destroy();
-    bool isValid() const { return B3_IS_NON_NULL(bodyId) && b3Body_IsValid(bodyId); }
+    bool isValid() const {
+        return B3_IS_NON_NULL(bodyId) && b3World_IsValid(ownerWorldId) && b3Body_IsValid(bodyId);
+    }
     b3BodyId getBodyId() const { return bodyId; }
 
     // -----------------------------------------------------------------
@@ -47,8 +57,10 @@ public:
     void syncToPhysics();                   // ofNode → body (teleport)
 
     glm::vec3 getPosition() const;
+    glm::dvec3 getPositionDouble() const;
     ofQuaternion getOrientationQuat() const;
     void setPosition(const glm::vec3& p);
+    void setPositionDouble(const glm::dvec3& p);
     void setOrientation(const ofQuaternion& q);
     void setTransform(const glm::vec3& p, const ofQuaternion& q);
 
@@ -110,7 +122,8 @@ public:
 
 protected:
     b3BodyId bodyId = b3_nullBodyId;
-    ofxBox3d* worldPtr = nullptr;           // non-owning
+    // Save the world's generation as well as the body ID: world slots can be reused.
+    b3WorldId ownerWorldId = b3_nullWorldId;
     ofColor color = ofColor::white;
     bool bFilled = true;
 
@@ -118,4 +131,9 @@ protected:
     b3ShapeDef makeShapeDef(float density = 1.f,
                             float friction = 0.3f,
                             float restitution = 0.f) const;
+    b3ShapeDef makeShapeDef(const ofxBox3dBodySettings& settings) const;
+    glm::mat4 getRenderTransformMatrix() const;
+
+private:
+    void moveFrom(ofxBox3dBody& other);
 };

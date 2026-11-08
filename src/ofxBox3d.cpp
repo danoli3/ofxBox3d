@@ -1,5 +1,8 @@
 #include "ofxBox3d.h"
 #include "ofxBox3dBody.h"
+#include "ofxBox3dBox.h"
+#include "ofxBox3dSphere.h"
+#include "ofxBox3dCapsule.h"
 
 ofxBox3d::ofxBox3d() = default;
 
@@ -21,6 +24,52 @@ void ofxBox3d::clear() {
     accumulator = 0.f;
 }
 
+void ofxBox3d::setupWithDefinition(const b3WorldDef& definition) {
+    clear();
+    worldId = b3CreateWorld(&definition);
+}
+
+ofxBox3dBox ofxBox3d::createBox(const glm::vec3& position, const glm::vec3& halfExtents,
+                               const ofxBox3dBodySettings& settings) {
+    if (!isSetup()) setup();
+    ofxBox3dBox body;
+    body.setup(*this, position, halfExtents, settings);
+    return body;
+}
+
+ofxBox3dBox ofxBox3d::createStaticBox(const glm::vec3& position, const glm::vec3& halfExtents,
+                                     float friction) {
+    ofxBox3dBodySettings settings;
+    settings.type = b3_staticBody;
+    settings.density = 0.f;
+    settings.friction = friction;
+    return createBox(position, halfExtents, settings);
+}
+
+ofxBox3dSphere ofxBox3d::createSphere(const glm::vec3& position, float radius,
+                                     const ofxBox3dBodySettings& settings) {
+    if (!isSetup()) setup();
+    ofxBox3dSphere body;
+    body.setup(*this, position, radius, settings);
+    return body;
+}
+
+ofxBox3dCapsule ofxBox3d::createCapsule(const glm::vec3& position, float radius, float height,
+                                       const ofxBox3dBodySettings& settings) {
+    if (!isSetup()) setup();
+    ofxBox3dCapsule body;
+    body.setup(*this, position, radius, height, settings);
+    return body;
+}
+
+int ofxBox3d::getBodyCount() const {
+    return isSetup() ? b3World_GetCounters(worldId).bodyCount : 0;
+}
+
+int ofxBox3d::getAwakeBodyCount() const {
+    return isSetup() ? b3World_GetAwakeBodyCount(worldId) : 0;
+}
+
 void ofxBox3d::createWorld(const glm::vec3& gravity) {
     b3WorldDef def = b3DefaultWorldDef();
     def.gravity = ofxBox3dUtils::toB3(gravity);
@@ -30,11 +79,11 @@ void ofxBox3d::createWorld(const glm::vec3& gravity) {
 }
 
 void ofxBox3d::destroyWorld() {
-    if (B3_IS_NON_NULL(worldId)) {
+    if (isSetup()) {
         b3DestroyWorld(worldId);
-        worldId = b3_nullWorldId;
         ofLogNotice("ofxBox3d") << "world destroyed";
     }
+    worldId = b3_nullWorldId;
 }
 
 void ofxBox3d::update(float frameDt) {

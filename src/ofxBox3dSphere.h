@@ -5,6 +5,11 @@
 class ofxBox3dSphere : public ofxBox3dBody {
 public:
     ofxBox3dSphere() = default;
+    ofxBox3dSphere(ofxBox3dSphere&& other);
+    ofxBox3dSphere& operator=(ofxBox3dSphere&& other);
+
+    bool setup(ofxBox3d& world, const glm::vec3& position, float radius,
+               const ofxBox3dBodySettings& settings);
 
     bool setup(ofxBox3d& world,
                const glm::vec3& position,

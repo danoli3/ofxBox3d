@@ -2,10 +2,11 @@
 
 FORMULA_TYPES=("osx" "vs" "linux")
 FORMULA_DEPENDS=()
+# Upstream still reports 0.1.0; build 2 pins main as of 2026-10-27.
 VER=0.1.0
-BUILD_ID=1
+BUILD_ID=2
 GIT_URL=https://github.com/erincatto/box3d
-GIT_TAG=c52908c9a907714e4d3a8a30be5272a1761158e1
+GIT_TAG=336263320469e5e9febfe18697ab562488f7e97a
 URL=${GIT_URL}/archive/${GIT_TAG}
 
 function download() {
@@ -28,7 +29,7 @@ function prepare() { :; }
 function build() {
   local dir="build_${TYPE}_${PLATFORM}"
   mkdir -p "$dir"
-  local args=(-S . -B "$dir" -DBUILD_SHARED_LIBS=OFF -DBOX3D_UNIT_TESTS=OFF -DBOX3D_SAMPLES=OFF -DBOX3D_BENCHMARKS=OFF -DBOX3D_DOCS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
+  local args=(-S . -B "$dir" -DBUILD_SHARED_LIBS=OFF -DBOX3D_DISABLE_SIMD=OFF -DBOX3D_UNIT_TESTS=OFF -DBOX3D_SAMPLES=OFF -DBOX3D_BENCHMARKS=OFF -DBOX3D_DOCS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
   if [[ "$TYPE" == vs ]]; then
     args+=(-A "$PLATFORM" -G "Visual Studio ${VS_VER_GEN}")
   elif [[ "$TYPE" == linux && "${CROSSCOMPILING:-0}" == 1 ]]; then
