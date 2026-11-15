@@ -19,7 +19,7 @@ jobs:
         disable_simd: ['OFF', 'ON']
         include:
           - name: macOS
-            os: macos-14
+            os: macos-27
           - name: Linux
             os: ubuntu-22.04
           - name: Windows
@@ -61,7 +61,7 @@ jobs:
 
   ios-tests:
     name: Box3D tests (iOS Simulator, disable SIMD=${{ matrix.disable_simd }})
-    runs-on: macos-14
+    runs-on: macos-27
     strategy:
       fail-fast: false
       matrix:

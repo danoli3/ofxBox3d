@@ -29,7 +29,7 @@ jobs:
       matrix:
         include:
           - package_id: osx
-            os: macos-14
+            os: macos-27
           - package_id: linux64
             os: ubuntu-22.04
           - package_id: vs-x64
