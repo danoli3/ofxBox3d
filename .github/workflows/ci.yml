@@ -196,6 +196,12 @@ jobs:
       - name: Build addon (android arm64-v8a)
         run: cmake --build build/addon-android-arm64 --config Release --parallel
 
+      - name: Locate Box3D test binary
+        run: |
+          test_bin="$(find build/box3d-android-x86_64 -type f -name test | head -1)"
+          test -n "$test_bin"
+          echo "TEST_BIN=$PWD/$test_bin" >> "$GITHUB_ENV"
+
       - name: Cache AVD
         id: avd-cache
         uses: actions/cache@v4
@@ -229,10 +235,8 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            test_bin="$(find build/box3d-android-x86_64 -type f -name test | head -1)"
-            test -n "$test_bin"
             adb wait-for-device
-            adb push "$test_bin" /data/local/tmp/box3d_test
+            adb push "$TEST_BIN" /data/local/tmp/box3d_test
             adb shell chmod 755 /data/local/tmp/box3d_test
             adb shell 'cd /data/local/tmp && ./box3d_test'
 
