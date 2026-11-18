@@ -19,7 +19,7 @@ jobs:
         disable_simd: ['OFF', 'ON']
         include:
           - name: macOS
-            os: macos-14
+            os: macos-latest
           - name: Linux
             os: ubuntu-22.04
           - name: Windows
@@ -58,6 +58,187 @@ jobs:
           test_bin="$(find build/box3d -type f \( -name test -o -name test.exe \) | head -1)"
           test -n "$test_bin"
           "$test_bin"
+
+  ios-tests:
+    name: Box3D tests (iOS Simulator, disable SIMD=${{ matrix.disable_simd }})
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        disable_simd: ['OFF', 'ON']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Fetch ios-cmake toolchain
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/ios.toolchain.cmake" \
+            https://raw.githubusercontent.com/leetal/ios-cmake/4.5.0/ios.toolchain.cmake
+
+      - name: Configure addon (iphoneos arm64)
+        run: >-
+          cmake -S . -B build/addon-ios -G Xcode
+          -DCMAKE_TOOLCHAIN_FILE="$RUNNER_TEMP/ios.toolchain.cmake"
+          -DPLATFORM=OS64
+          -DDEPLOYMENT_TARGET=15.0
+          -DCMAKE_BUILD_TYPE=Release
+          -DBOX3D_DISABLE_SIMD=${{ matrix.disable_simd }}
+          -DBOX3D_UNIT_TESTS=OFF
+          -DBOX3D_SAMPLES=OFF
+          -DBOX3D_BENCHMARKS=OFF
+          -DBOX3D_DOCS=OFF
+
+      - name: Build addon (iphoneos arm64)
+        run: cmake --build build/addon-ios --config Release
+
+      - name: Configure Box3D tests (iphonesimulator arm64)
+        run: >-
+          cmake -S libs/box3d -B build/box3d-ios-sim -G Xcode
+          -DCMAKE_TOOLCHAIN_FILE="$RUNNER_TEMP/ios.toolchain.cmake"
+          -DPLATFORM=SIMULATORARM64
+          -DDEPLOYMENT_TARGET=15.0
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_SHARED_LIBS=OFF
+          -DBOX3D_DISABLE_SIMD=${{ matrix.disable_simd }}
+          -DBOX3D_UNIT_TESTS=ON
+          -DBOX3D_SAMPLES=OFF
+          -DBOX3D_BENCHMARKS=OFF
+          -DBOX3D_DOCS=OFF
+
+      - name: Build Box3D tests (iphonesimulator arm64)
+        run: cmake --build build/box3d-ios-sim --config Release
+
+      - name: Boot iOS simulator
+        run: |
+          RUNTIME=$(xcrun simctl list runtimes --json | python3 -c '
+          import json,sys
+          runtimes=[r for r in json.load(sys.stdin)["runtimes"] if r["isAvailable"] and "iOS" in r["identifier"]]
+          print(runtimes[-1]["identifier"])')
+          UDID=$(xcrun simctl create ci-iphone "iPhone 15" "$RUNTIME")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Run Box3D tests on iOS simulator
+        run: |
+          test_bin="$(find build/box3d-ios-sim -type f -name test -perm -u+x | head -1)"
+          test -n "$test_bin"
+          echo "Running $test_bin on simulator $SIM_UDID"
+          xcrun simctl spawn "$SIM_UDID" "$PWD/$test_bin"
+
+      - name: Shutdown iOS simulator
+        if: always()
+        run: xcrun simctl shutdown "$SIM_UDID" || true
+
+  android-tests:
+    name: Box3D tests (Android x86_64, disable SIMD=${{ matrix.disable_simd }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        disable_simd: ['OFF', 'ON']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26d
+          add-to-path: false
+
+      - name: Configure Box3D tests (android x86_64)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: >-
+          cmake -S libs/box3d -B build/box3d-android-x86_64
+          -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+          -DANDROID_ABI=x86_64
+          -DANDROID_PLATFORM=android-24
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_SHARED_LIBS=OFF
+          -DBOX3D_DISABLE_SIMD=${{ matrix.disable_simd }}
+          -DBOX3D_UNIT_TESTS=ON
+          -DBOX3D_SAMPLES=OFF
+          -DBOX3D_BENCHMARKS=OFF
+          -DBOX3D_DOCS=OFF
+
+      - name: Build Box3D tests (android x86_64)
+        run: cmake --build build/box3d-android-x86_64 --config Release --parallel
+
+      - name: Configure addon (android arm64-v8a)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: >-
+          cmake -S . -B build/addon-android-arm64
+          -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+          -DANDROID_ABI=arm64-v8a
+          -DANDROID_PLATFORM=android-24
+          -DCMAKE_BUILD_TYPE=Release
+          -DBOX3D_DISABLE_SIMD=${{ matrix.disable_simd }}
+          -DBOX3D_UNIT_TESTS=OFF
+          -DBOX3D_SAMPLES=OFF
+          -DBOX3D_BENCHMARKS=OFF
+          -DBOX3D_DOCS=OFF
+
+      - name: Build addon (android arm64-v8a)
+        run: cmake --build build/addon-android-arm64 --config Release --parallel
+
+      - name: Locate Box3D test binary
+        run: |
+          test_bin="$(find build/box3d-android-x86_64 -type f -name test | head -1)"
+          test -n "$test_bin"
+          echo "TEST_BIN=$PWD/$test_bin" >> "$GITHUB_ENV"
+
+      - name: Cache AVD
+        id: avd-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-api29-x86_64-v1
+
+      - name: Create AVD snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          profile: pixel
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: echo "AVD snapshot created"
+
+      - name: Run Box3D tests on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          profile: pixel
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb wait-for-device
+            adb push "$TEST_BIN" /data/local/tmp/box3d_test
+            adb shell chmod 755 /data/local/tmp/box3d_test
+            adb shell 'cd /data/local/tmp && ./box3d_test'
 
   scripts:
     name: Packaging scripts
